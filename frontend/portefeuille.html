@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mon Portefeuille — Portfolio</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <style>
+    :root,[data-theme="light"]{
+      --bg:#f7f6f2;--surface:#f9f8f5;--surface2:#fbfbf9;--offset:#edeae5;
+      --border:#d4d1ca;--divider:#dcd9d5;--text:#28251d;--muted:#7a7974;
+      --faint:#bab9b4;--primary:#01696f;--success:#437a22;--error:#a13544;
+      --shadow-sm:0 1px 2px rgba(40,37,29,.06);--shadow-md:0 4px 14px rgba(40,37,29,.1);
+      --r-lg:.75rem;--r-xl:1rem;--r-full:9999px;
+      --font:'Inter','Helvetica Neue',sans-serif;--ease:180ms cubic-bezier(.16,1,.3,1);
+    }
+    [data-theme="dark"]{
+      --bg:#171614;--surface:#1c1b19;--surface2:#201f1d;--offset:#22211f;
+      --border:#393836;--divider:#262523;--text:#cdccca;--muted:#797876;
+      --faint:#5a5957;--primary:#4f98a3;--success:#6daa45;--error:#dd6974;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.3);--shadow-md:0 4px 14px rgba(0,0,0,.4);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-font-smoothing:antialiased}
+    body{min-height:100dvh;font-family:var(--font);color:var(--text);background:var(--bg)}
+
+    /* HEADER */
+    header{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+    .logo{display:flex;align-items:center;gap:.6rem;text-decoration:none;color:inherit}
+    .logo-name{font-size:.9rem;font-weight:700;letter-spacing:-.02em}
+    .nav-links{display:flex;gap:.25rem}
+    .nav-link{padding:5px 12px;border-radius:var(--r-full);font-size:.78rem;font-weight:500;color:var(--muted);text-decoration:none;transition:background var(--ease),color var(--ease)}
+    .nav-link:hover{background:var(--offset);color:var(--text)}
+    .nav-link.active{background:var(--primary);color:#fff}
+    .icon-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-full);background:var(--offset);border:none;cursor:pointer;color:var(--muted);transition:background var(--ease)}
+    .icon-btn:hover{background:var(--border);color:var(--text)}
+
+    /* MAIN */
+    main{max-width:1000px;margin:0 auto;padding:2rem 1.5rem;display:flex;flex-direction:column;gap:2rem}
+    .section-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.75rem}
+
+    /* CARD */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:1.5rem;box-shadow:var(--shadow-sm)}
+    .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+    .card-title{font-size:.9rem;font-weight:600}
+    .card-sub{font-size:.75rem;color:var(--muted);margin-top:.15rem}
+
+    /* FORM ROW */
+    .form-row{display:flex;gap:.75rem;flex-wrap:wrap}
+    .form-group{display:flex;flex-direction:column;gap:.35rem;flex:1;min-width:130px}
+    .form-group.narrow{flex:0 0 120px}
+    .form-group.xnarrow{flex:0 0 95px}
+    label{font-size:.7rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+    input,select{
+      padding:.55rem .8rem;border-radius:var(--r-lg);border:1px solid var(--border);
+      background:var(--offset);color:var(--text);font-family:var(--font);font-size:.84rem;
+      transition:border-color var(--ease),box-shadow var(--ease);outline:none;
+    }
+    input:focus,select:focus{border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in oklab,var(--primary) 18%,transparent)}
+    select option{background:var(--surface)}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:.4rem;padding:.5rem 1.1rem;border-radius:var(--r-full);font-family:var(--font);font-size:.82rem;font-weight:600;cursor:pointer;border:none;transition:opacity var(--ease),transform var(--ease)}
+    .btn:hover{opacity:.85;transform:translateY(-1px)}
+    .btn-primary{background:var(--primary);color:#fff}
+    .btn-ghost{background:var(--offset);color:var(--muted)}
+    .btn-danger{background:color-mix(in oklab,var(--error) 15%,transparent);color:var(--error);padding:.35rem .7rem;font-size:.75rem}
+
+    /* TABLES */
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    th{text-align:left;padding:.45rem .85rem;font-size:.67rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--divider)}
+    th.r,td.r{text-align:right}
+    td{padding:.6rem .85rem;border-bottom:1px solid var(--divider);font-variant-numeric:tabular-nums;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:var(--offset)}
+    .empty-row td{text-align:center;padding:2rem;color:var(--muted);font-size:.82rem}
+
+    /* TAGS / BADGES */
+    .tag{display:inline-flex;align-items:center;gap:.3rem;padding:2px 9px;border-radius:var(--r-full);font-size:.72rem;font-weight:600}
+    .tag-crypto{background:color-mix(in oklab,#f59e0b 15%,transparent);color:#f59e0b}
+    .tag-action{background:color-mix(in oklab,#4f98a3 15%,transparent);color:#4f98a3}
+    .tag-etf{background:color-mix(in oklab,#8b5cf6 15%,transparent);color:#8b5cf6}
+    .tag-autre{background:color-mix(in oklab,var(--muted) 15%,transparent);color:var(--muted)}
+    .up{color:var(--success);font-weight:600}
+    .dn{color:var(--error);font-weight:600}
+    .nt{color:var(--muted)}
+
+    /* SUMMARY BAR */
+    .summary-bar{display:flex;gap:1.5rem;flex-wrap:wrap;padding:1rem 1.25rem;background:var(--offset);border-radius:var(--r-lg);margin-bottom:1.25rem}
+    .summary-item{display:flex;flex-direction:column;gap:.2rem}
+    .summary-label{font-size:.67rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+    .summary-value{font-size:1.1rem;font-weight:700;font-variant-numeric:tabular-nums}
+
+    /* ESTAB GRID */
+    .estab-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.75rem;margin-bottom:1.25rem}
+    .estab-card{background:var(--offset);border:1px solid var(--border);border-radius:var(--r-lg);padding:.9rem 1rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;transition:box-shadow var(--ease)}
+    .estab-card:hover{box-shadow:var(--shadow-md)}
+    .estab-left{display:flex;align-items:center;gap:.6rem}
+    .estab-icon{font-size:1.4rem;width:36px;height:36px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-lg);background:var(--surface)}
+    .estab-name{font-size:.85rem;font-weight:600}
+    .estab-type{font-size:.7rem;color:var(--muted)}
+
+    .divider{border:none;border-top:1px solid var(--divider);margin:.5rem 0}
+
+    @media(max-width:640px){main{padding:1rem .75rem}.form-row{flex-direction:column}.form-group.narrow,.form-group.xnarrow{flex:1}}
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="logo">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="7" fill="var(--primary)"/>
+      <path d="M7 20 L12 13 L16 17 L21 8" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <circle cx="21" cy="8" r="2" fill="white"/>
+    </svg>
+    <span class="logo-name">Portfolio</span>
+  </a>
+  <nav class="nav-links">
+    <a href="/" class="nav-link">Dashboard</a>
+    <a href="/portefeuille" class="nav-link active">Mon portefeuille</a>
+  </nav>
+  <button class="icon-btn" id="themeBtn" title="Thème">
+    <svg id="themeIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+  </button>
+</header>
+
+<main>
+
+  <!-- ===== ÉTABLISSEMENTS ===== -->
+  <section>
+    <div class="section-label">Établissements / Comptes</div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Mes comptes</div>
+          <div class="card-sub">Binance, Saxobank, Boursobank, PEA, CTO…</div>
+        </div>
+      </div>
+
+      <div class="estab-grid" id="estabGrid"></div>
+
+      <hr class="divider">
+      <p class="section-label" style="margin-bottom:.75rem">Ajouter un compte</p>
+      <div class="form-row" id="estabForm">
+        <div class="form-group narrow">
+          <label>Icône</label>
+          <select id="estabIcon">
+            <option value="🏦">🏦 Banque</option>
+            <option value="₿">₿ Crypto</option>
+            <option value="📈">📈 Bourse</option>
+            <option value="💶">💶 Livret</option>
+            <option value="🏛️">🏛️ Courtier</option>
+            <option value="🌐">🌐 Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Nom du compte</label>
+          <input type="text" id="estabName" placeholder="ex : Binance, PEA Saxo…" maxlength="40">
+        </div>
+        <div class="form-group narrow">
+          <label>Type</label>
+          <select id="estabType">
+            <option value="crypto">Crypto</option>
+            <option value="action">Actions / ETF</option>
+            <option value="livret">Livret</option>
+            <option value="pea">PEA</option>
+            <option value="cto">CTO</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:0;align-self:flex-end">
+          <button class="btn btn-primary" onclick="addEstab()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ajouter
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== ACTIFS ===== -->
+  <section>
+    <div class="section-label">Actifs détenus</div>
+    <div class="card">
+      <div class="summary-bar" id="summaryBar">
+        <div class="summary-item"><span class="summary-label">Valeur actuelle</span><span class="summary-value" id="sumTotal">—</span></div>
+        <div class="summary-item"><span class="summary-label">Capital investi</span><span class="summary-value" id="sumInvested">—</span></div>
+        <div class="summary-item"><span class="summary-label">+/− latent</span><span class="summary-value" id="sumPnl">—</span></div>
+        <div class="summary-item"><span class="summary-label">Actifs</span><span class="summary-value" id="sumCount">—</span></div>
+      </div>
+
+      <table id="assetsTable">
+        <thead>
+          <tr>
+            <th>Actif</th>
+            <th>Type</th>
+            <th>Compte</th>
+            <th class="r">Qté</th>
+            <th class="r">Prix achat</th>
+            <th class="r">Prix actuel</th>
+            <th class="r">Investi</th>
+            <th class="r">Valeur</th>
+            <th class="r">+/−</th>
+            <th class="r">%</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="assetsBody">
+          <tr class="empty-row"><td colspan="11">Aucun actif. Ajoute-en un ci-dessous ↓</td></tr>
+        </tbody>
+      </table>
+
+      <hr class="divider" style="margin:1.25rem 0">
+      <p class="section-label" style="margin-bottom:.75rem">Ajouter un actif</p>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Ticker / Symbole</label>
+          <input type="text" id="aSymbol" placeholder="BTC, AAPL, MSFT…" style="text-transform:uppercase">
+        </div>
+        <div class="form-group narrow">
+          <label>Type</label>
+          <select id="aType">
+            <option value="crypto">Crypto</option>
+            <option value="action">Action</option>
+            <option value="etf">ETF</option>
+            <option value="autre">Autre</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Compte</label>
+          <select id="aAccount"><option value="">— Aucun —</option></select>
+        </div>
+        <div class="form-group xnarrow">
+          <label>Quantité</label>
+          <input type="number" id="aQty" placeholder="0.5" step="any" min="0">
+        </div>
+        <div class="form-group narrow">
+          <label>Prix d'achat (€/$)</label>
+          <input type="number" id="aBuy" placeholder="43000" step="any" min="0">
+        </div>
+        <div class="form-group" style="flex:0;align-self:flex-end">
+          <button class="btn btn-primary" onclick="addAsset()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ajouter
+          </button>
+        </div>
+      </div>
+
+      <div id="addMsg" style="font-size:.78rem;margin-top:.75rem;color:var(--muted)"></div>
+    </div>
+  </section>
+
+</main>
+
+<script>
+/* ── helpers ── */
+const fmtUsd = (v, d=2) => new Intl.NumberFormat('fr-FR',{style:'currency',currency:'EUR',minimumFractionDigits:d,maximumFractionDigits:d}).format(v);
+const fmtNum = v => new Intl.NumberFormat('fr-FR',{maximumFractionDigits:8}).format(v);
+const store = key => JSON.parse(localStorage.getItem(key)||'[]');
+const save  = (key,v) => localStorage.setItem(key, JSON.stringify(v));
+
+/* ── theme ── */
+const isDark=()=>document.documentElement.getAttribute('data-theme')==='dark';
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  const dark=isDark();
+  document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('themeIcon').innerHTML=dark
+    ?'<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'
+    :'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+});
+
+/* ════════════════════════════════
+   ÉTABLISSEMENTS
+════════════════════════════════ */
+let estabs = store('estabs');
+
+function renderEstabs(){
+  const grid = document.getElementById('estabGrid');
+  const sel  = document.getElementById('aAccount');
+  // sync select
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— Aucun —</option>';
+  estabs.forEach((e,i) => {
+    const opt = document.createElement('option');
+    opt.value = i; opt.textContent = e.icon+' '+e.name;
+    sel.appendChild(opt);
+  });
+  if(prev) sel.value = prev;
+
+  if(!estabs.length){
+    grid.innerHTML = '<p style="font-size:.8rem;color:var(--muted);padding:.25rem 0">Aucun compte ajouté.</p>';
+    return;
+  }
+  const TYPE_LABEL = {crypto:'Crypto',action:'Actions/ETF',livret:'Livret',pea:'PEA',cto:'CTO',autre:'Autre'};
+  grid.innerHTML = estabs.map((e,i)=>`
+    <div class="estab-card">
+      <div class="estab-left">
+        <div class="estab-icon">${e.icon}</div>
+        <div><div class="estab-name">${e.name}</div><div class="estab-type">${TYPE_LABEL[e.type]||e.type}</div></div>
+      </div>
+      <button class="btn btn-danger" onclick="removeEstab(${i})" title="Supprimer">✕</button>
+    </div>
+  `).join('');
+}
+
+function addEstab(){
+  const icon = document.getElementById('estabIcon').value;
+  const name = document.getElementById('estabName').value.trim();
+  const type = document.getElementById('estabType').value;
+  if(!name){ document.getElementById('estabName').focus(); return; }
+  estabs.push({icon,name,type});
+  save('estabs',estabs);
+  document.getElementById('estabName').value = '';
+  renderEstabs();
+}
+window.removeEstab = i => {
+  if(!confirm('Supprimer ce compte ?')) return;
+  estabs.splice(i,1);
+  save('estabs',estabs);
+  renderEstabs();
+  renderAssets();
+};
+
+/* ════════════════════════════════
+   ACTIFS
+════════════════════════════════ */
+let assets = store('assets');
+let prices = {}; // cache ticker→current price
+
+const TICKER_ALIASES = {
+  BTC:'BTC-USD', ETH:'ETH-USD', SOL:'SOL-USD', BNB:'BNB-USD',
+  XRP:'XRP-USD', ADA:'ADA-USD', DOGE:'DOGE-USD', AVAX:'AVAX-USD',
+};
+
+async function fetchPrice(symbol){
+  if(prices[symbol] !== undefined) return prices[symbol];
+  const ticker = TICKER_ALIASES[symbol.toUpperCase()] || symbol;
+  try{
+    const r = await fetch(`/api/quote?symbol=${encodeURIComponent(ticker)}`);
+    if(!r.ok) return null;
+    const d = await r.json();
+    prices[symbol] = d.price ?? null;
+    return prices[symbol];
+  } catch{ return null; }
+}
+
+async function refreshPrices(){
+  const msg = document.getElementById('addMsg');
+  msg.textContent = '🔄 Récupération des prix live…';
+  prices = {};
+  for(const a of assets){ await fetchPrice(a.symbol); }
+  renderAssets();
+  msg.textContent = '✅ Prix mis à jour.';
+  setTimeout(()=>{ msg.textContent=''; },3000);
+}
+
+function renderAssets(){
+  const tbody = document.getElementById('assetsBody');
+  if(!assets.length){
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="11">Aucun actif. Ajoute-en un ci-dessous ↓</td></tr>';
+    updateSummary([]);
+    return;
+  }
+
+  const TYPE_TAG = {crypto:'tag-crypto',action:'tag-action',etf:'tag-etf',autre:'tag-autre'};
+  const rows = [];
+  const summaryRows = [];
+
+  for(let i=0;i<assets.length;i++){
+    const a = assets[i];
+    const cur = prices[a.symbol];
+    const invested = a.qty * a.buyPrice;
+    const curVal   = cur != null ? a.qty * cur : null;
+    const pnl      = curVal != null ? curVal - invested : null;
+    const pnlPct   = pnl != null && invested > 0 ? pnl/invested : null;
+    summaryRows.push({invested, curVal, pnl});
+
+    const estabName = a.accountIdx !== '' && estabs[a.accountIdx] ? estabs[a.accountIdx].icon+' '+estabs[a.accountIdx].name : '<span class="nt">—</span>';
+    const curCell   = cur != null ? fmtUsd(cur) : '<span class="nt" title="Prix non chargé">—</span>';
+    const valCell   = curVal != null ? fmtUsd(curVal) : '<span class="nt">—</span>';
+    const pnlCell   = pnl != null ? `<span class="${pnl>=0?'up':'dn'}">${pnl>=0?'+':''}${fmtUsd(pnl)}</span>` : '<span class="nt">—</span>';
+    const pctCell   = pnlPct != null ? `<span class="${pnlPct>=0?'up':'dn'}">${pnlPct>=0?'+':''}${(pnlPct*100).toFixed(2)}%</span>` : '<span class="nt">—</span>';
+
+    rows.push(`
+      <tr>
+        <td><strong>${a.symbol.toUpperCase()}</strong></td>
+        <td><span class="tag ${TYPE_TAG[a.type]||'tag-autre'}">${a.type}</span></td>
+        <td>${estabName}</td>
+        <td class="r">${fmtNum(a.qty)}</td>
+        <td class="r">${fmtUsd(a.buyPrice)}</td>
+        <td class="r">${curCell}</td>
+        <td class="r">${fmtUsd(invested)}</td>
+        <td class="r">${valCell}</td>
+        <td class="r">${pnlCell}</td>
+        <td class="r">${pctCell}</td>
+        <td class="r"><button class="btn btn-danger" onclick="removeAsset(${i})">✕</button></td>
+      </tr>
+    `);
+  }
+  tbody.innerHTML = rows.join('');
+  updateSummary(summaryRows);
+}
+
+function updateSummary(rows){
+  const totalInv = rows.reduce((s,r)=>s+r.invested,0);
+  const totalVal = rows.reduce((s,r)=>s+(r.curVal??r.invested),0);
+  const totalPnl = rows.reduce((s,r)=>s+(r.pnl??0),0);
+  document.getElementById('sumTotal').textContent    = rows.length ? fmtUsd(totalVal) : '—';
+  document.getElementById('sumInvested').textContent = rows.length ? fmtUsd(totalInv) : '—';
+  const pnlEl = document.getElementById('sumPnl');
+  pnlEl.textContent = rows.length ? (totalPnl>=0?'+':'')+fmtUsd(totalPnl) : '—';
+  pnlEl.className = 'summary-value '+(rows.length ? (totalPnl>=0?'up':'dn') : '');
+  document.getElementById('sumCount').textContent = rows.length || '—';
+}
+
+async function addAsset(){
+  const symbol   = document.getElementById('aSymbol').value.trim().toUpperCase();
+  const type     = document.getElementById('aType').value;
+  const accountIdx = document.getElementById('aAccount').value;
+  const qty      = parseFloat(document.getElementById('aQty').value);
+  const buyPrice = parseFloat(document.getElementById('aBuy').value);
+  const msg      = document.getElementById('addMsg');
+
+  if(!symbol||isNaN(qty)||qty<=0||isNaN(buyPrice)||buyPrice<0){
+    msg.textContent = '⚠ Remplis tous les champs correctement.'; msg.style.color='var(--error)';
+    setTimeout(()=>{msg.textContent='';msg.style.color='var(--muted)';},3000);
+    return;
+  }
+
+  msg.textContent = '🔄 Récupération du prix actuel…'; msg.style.color='var(--muted)';
+  await fetchPrice(symbol);
+
+  assets.push({symbol, type, accountIdx, qty, buyPrice});
+  save('assets', assets);
+
+  // reset
+  ['aSymbol','aQty','aBuy'].forEach(id=>{ document.getElementById(id).value=''; });
+  msg.textContent = '✅ '+symbol+' ajouté !'; msg.style.color='var(--success)';
+  setTimeout(()=>{ msg.textContent=''; },3000);
+  renderAssets();
+}
+
+window.removeAsset = i => {
+  assets.splice(i,1);
+  save('assets',assets);
+  renderAssets();
+};
+
+/* ── init ── */
+renderEstabs();
+renderAssets();
+
+// load prices on start
+(async()=>{
+  if(assets.length){
+    for(const a of assets){ await fetchPrice(a.symbol); }
+    renderAssets();
+  }
+})();
+</script>
+</body>
+</html>
