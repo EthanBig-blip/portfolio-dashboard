@@ -10,6 +10,7 @@ from .market import get_all_benchmarks, get_benchmark_data, fetch_series
 from .portfolio import load_transactions, compute_holdings, compute_invested_capital, compute_performance
 from . import cache
 from .routes.quote import router as quote_router
+from .routes.assets import router as assets_router
 
 app = FastAPI(title="Portfolio Dashboard", version="1.0.0")
 
@@ -18,6 +19,7 @@ app.mount("/static", StaticFiles(directory=str(FRONTEND)), name="static")
 
 # --- Routers ---
 app.include_router(quote_router)
+app.include_router(assets_router)
 
 
 @app.get("/", include_in_schema=False)
