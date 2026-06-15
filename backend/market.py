@@ -1,13 +1,13 @@
-"""Live market data via yfinance + Livret A taux fixe."""
-import os
-import yfinance as yf
-from datetime import datetime, timedelta, date
+"""
+Market data layer — uses the unified fetcher (CoinGecko + Yahoo direct HTTP).
+No yfinance dependency for live/history data.
+"""
+from datetime import datetime, timedelta
 from . import cache
-
-CACHE_TTL = int(os.getenv("CACHE_TTL", "300"))
+from .fetcher import get_series, get_price  # noqa: F401
 
 BENCHMARKS = {
-    "sp500":     {"name": "S&P 500",   "symbol": "^GSPC", "color": "#5591c7", "icon": "🇺🇸"},
+    "sp500":     {"name": "S&P 500",    "symbol": "^GSPC", "color": "#5591c7", "icon": "🇺🇸"},
     "nasdaq100": {"name": "Nasdaq 100", "symbol": "^NDX",  "color": "#9b72cf", "icon": "💻"},
     "msci":      {"name": "MSCI World", "symbol": "URTH",  "color": "#e8af34", "icon": "🌍"},
     "cac40":     {"name": "CAC 40",     "symbol": "^FCHI", "color": "#e06c75", "icon": "🇫🇷"},
@@ -15,91 +15,12 @@ BENCHMARKS = {
 
 LIVRET_A_RATE = 0.025
 
-PERIOD_TO_DAYS = {
-    "5d": 5, "1mo": 30, "3mo": 90, "6mo": 180,
-    "1y": 365, "2y": 730, "5y": 1825, "max": 3650,
-}
+
+def fetch_series(ticker: str, period: str = "1y", interval: str = "1d") -> list[dict]:
+    return get_series(ticker, period)
 
 
-def _days_from_period(period: str) -> int:
-    return PERIOD_TO_DAYS.get(period, 730)
-
-
-def fetch_series(ticker: str, period: str = "2y", interval: str = "1d") -> list[dict]:
-    key = f"series:{ticker}:{period}:{interval}"
-    cached = cache.get(key, CACHE_TTL)
-    if cached:
-        return cached
-
-    # --- Try yf.download() first (more reliable than .history()) ---
-    try:
-        import pandas as pd
-        days = _days_from_period(period)
-        end = datetime.now()
-        start = end - timedelta(days=days)
-        df = yf.download(
-            ticker,
-            start=start.strftime("%Y-%m-%d"),
-            end=end.strftime("%Y-%m-%d"),
-            interval=interval,
-            progress=False,
-            auto_adjust=True,
-            threads=False,
-        )
-        if df is not None and not df.empty:
-            # Handle MultiIndex columns (yfinance >= 0.2.x)
-            if isinstance(df.columns, pd.MultiIndex):
-                df.columns = df.columns.get_level_values(0)
-            close_col = next((c for c in df.columns if str(c).lower() == "close"), None)
-            if close_col:
-                df = df[[close_col]].dropna()
-                data = [
-                    {"date": str(ts.date()), "close": round(float(row[close_col]), 4)}
-                    for ts, row in df.iterrows()
-                ]
-                if data:
-                    cache.set(key, data)
-                    return data
-    except Exception as e:
-        print(f"[market] download() failed for {ticker}: {e}")
-
-    # --- Fallback: .history() ---
-    try:
-        t = yf.Ticker(ticker)
-        hist = t.history(period=period, interval=interval, auto_adjust=True)
-        if not hist.empty:
-            data = [
-                {"date": str(ts.date()), "close": round(float(row["Close"]), 4)}
-                for ts, row in hist.iterrows()
-            ]
-            cache.set(key, data)
-            return data
-    except Exception as e:
-        print(f"[market] history() failed for {ticker}: {e}")
-
-    # --- Last resort: build synthetic series from fast_info ---
-    try:
-        t = yf.Ticker(ticker)
-        last_price = t.fast_info["lastPrice"]
-        if last_price:
-            days = _days_from_period(period)
-            today = date.today()
-            data = [
-                {
-                    "date": str(today - timedelta(days=days - i)),
-                    "close": round(float(last_price), 4)
-                }
-                for i in range(0, days + 1, max(1, days // 365))
-            ]
-            print(f"[market] Using fast_info fallback for {ticker}")
-            return data
-    except Exception as e:
-        print(f"[market] fast_info fallback failed for {ticker}: {e}")
-
-    return []
-
-
-def fetch_livret_a(days: int = 730) -> list[dict]:
+def fetch_livret_a(days: int = 365) -> list[dict]:
     base = 100.0
     result = []
     daily_rate = LIVRET_A_RATE / 365
@@ -110,9 +31,9 @@ def fetch_livret_a(days: int = 730) -> list[dict]:
     return result
 
 
-def get_benchmark_data(bench_id: str, period: str = "2y") -> dict:
+def get_benchmark_data(bench_id: str, period: str = "1y") -> dict:
     if bench_id == "livreta":
-        series = fetch_livret_a(730)
+        series = fetch_livret_a(365)
         return {
             "id": "livreta", "name": "Livret A", "symbol": "LIVRET-A",
             "color": "#98c379", "icon": "🏦", "rate": LIVRET_A_RATE,
@@ -141,6 +62,6 @@ def get_benchmark_data(bench_id: str, period: str = "2y") -> dict:
     }
 
 
-def get_all_benchmarks(period: str = "2y") -> list[dict]:
+def get_all_benchmarks(period: str = "1y") -> list[dict]:
     ids = list(BENCHMARKS.keys()) + ["livreta"]
     return [get_benchmark_data(bid, period) for bid in ids]

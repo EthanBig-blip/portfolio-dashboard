@@ -1,23 +1,23 @@
-"""FastAPI application — Portfolio Dashboard backend."""
-import os
+"""
+FastAPI application — Portfolio Dashboard backend.
+Market data via CoinGecko + direct Yahoo HTTP (no yfinance for history).
+"""
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pathlib import Path
-import yfinance as yf
-
+from .fetcher import get_price
 from .market import get_all_benchmarks, get_benchmark_data, fetch_series
 from .portfolio import load_transactions, compute_holdings, compute_invested_capital, compute_performance
 from . import cache
 from .routes.quote import router as quote_router
 from .routes.assets import router as assets_router
 
-app = FastAPI(title="Portfolio Dashboard", version="1.0.0")
+app = FastAPI(title="Portfolio Dashboard", version="2.0.0")
 
 FRONTEND = Path(__file__).parent.parent / "frontend"
 app.mount("/static", StaticFiles(directory=str(FRONTEND)), name="static")
 
-# --- Routers ---
 app.include_router(quote_router)
 app.include_router(assets_router)
 
@@ -45,19 +45,15 @@ async def portfolio_summary():
     total_value = 0.0
     positions = []
     for symbol, qty in holdings.items():
-        cached = cache.get(f"price:{symbol}")
-        if cached:
-            price = cached
-        else:
-            try:
-                ticker = yf.Ticker(symbol)
-                price = ticker.fast_info["lastPrice"]
-                cache.set(f"price:{symbol}", price)
-            except Exception:
-                price = 0.0
+        price = get_price(symbol) or 0.0
         value = qty * price
         total_value += value
-        positions.append({"symbol": symbol, "quantity": round(qty, 8), "current_price": round(price, 2), "value": round(value, 2)})
+        positions.append({
+            "symbol": symbol,
+            "quantity": round(qty, 8),
+            "current_price": round(price, 2),
+            "value": round(value, 2)
+        })
     pnl = total_value - invested
     pnl_pct = pnl / invested if invested else 0
     return {
@@ -70,7 +66,7 @@ async def portfolio_summary():
 
 
 @app.get("/api/portfolio/history")
-async def portfolio_history(period: str = "2y"):
+async def portfolio_history(period: str = "1y"):
     txs = load_transactions()
     symbols = list(set(t["symbol"] for t in txs if t["type"] in ("BUY", "SELL")))
     histories: dict = {}
@@ -97,20 +93,27 @@ async def portfolio_history(period: str = "2y"):
                 holdings[sym] = holdings.get(sym, 0) - t["quantity"]
                 invested -= t["quantity"] * t["price"] - t.get("fee", 0)
             tx_idx += 1
-        total = sum(qty * price_by_date[sym].get(date_str, 0) for sym, qty in holdings.items() if qty > 0)
+        total = sum(
+            qty * price_by_date[sym].get(date_str, 0)
+            for sym, qty in holdings.items() if qty > 0
+        )
         if total > 0:
             series_value.append({"date": date_str, "value": round(total, 2)})
             series_invested.append({"date": date_str, "value": round(invested, 2)})
-    return {"series": series_value, "invested": series_invested, "performance": compute_performance(series_value)}
+    return {
+        "series": series_value,
+        "invested": series_invested,
+        "performance": compute_performance(series_value)
+    }
 
 
 @app.get("/api/benchmarks")
-async def benchmarks(period: str = "2y"):
+async def benchmarks(period: str = "1y"):
     return {"benchmarks": get_all_benchmarks(period)}
 
 
 @app.get("/api/benchmarks/{bench_id}")
-async def benchmark_detail(bench_id: str, period: str = "2y"):
+async def benchmark_detail(bench_id: str, period: str = "1y"):
     data = get_benchmark_data(bench_id, period)
     if not data:
         raise HTTPException(status_code=404, detail="Benchmark not found")
