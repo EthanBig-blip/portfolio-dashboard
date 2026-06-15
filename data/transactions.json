@@ -1,0 +1,10 @@
+[
+  {"date": "2023-01-10", "symbol": "BTC-USD",  "type": "BUY",  "quantity": 0.1,  "price": 17200, "fee": 3.44,  "currency": "USD", "note": "Achat initial BTC"},
+  {"date": "2023-03-15", "symbol": "ETH-USD",  "type": "BUY",  "quantity": 1.5,  "price": 1680,  "fee": 2.52,  "currency": "USD", "note": "Achat ETH"},
+  {"date": "2023-06-01", "symbol": "BTC-USD",  "type": "BUY",  "quantity": 0.05, "price": 27000, "fee": 1.35,  "currency": "USD"},
+  {"date": "2023-09-20", "symbol": "BTC-USD",  "type": "SELL", "quantity": 0.03, "price": 26800, "fee": 0.80,  "currency": "USD", "note": "Prise de bénéfice"},
+  {"date": "2024-01-05", "symbol": "SOL-USD",  "type": "BUY",  "quantity": 10,   "price": 102,   "fee": 1.02,  "currency": "USD"},
+  {"date": "2024-03-10", "symbol": "BTC-USD",  "type": "BUY",  "quantity": 0.02, "price": 68000, "fee": 1.36,  "currency": "USD"},
+  {"date": "2024-07-01", "symbol": "ETH-USD",  "type": "BUY",  "quantity": 0.5,  "price": 3200,  "fee": 1.60,  "currency": "USD"},
+  {"date": "2025-01-15", "symbol": "BTC-USD",  "type": "BUY",  "quantity": 0.01, "price": 98000, "fee": 0.98,  "currency": "USD"}
+]
