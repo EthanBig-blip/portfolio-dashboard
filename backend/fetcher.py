@@ -1,24 +1,21 @@
 """
 Unified market data fetcher.
   - Crypto  → CoinGecko (gratuit, sans clé)
-  - Actions / Indices → yfinance (fast_info pour le prix, download() pour l'historique)
+  - Actions / Indices → yfinance avec session curl_cffi (bypass cookies Yahoo 2024)
   - Fallback synthétique si tout échoue
 """
 import json
 import urllib.request
-import urllib.parse
 from datetime import datetime, timedelta, date
 from . import cache
 
 CACHE_TTL = 300
 
-# Mapping ticker → CoinGecko ID
 COINGECKO_IDS = {
     "BTC-USD": "bitcoin",      "ETH-USD": "ethereum",     "SOL-USD": "solana",
     "BNB-USD": "binancecoin",  "XRP-USD": "ripple",       "ADA-USD": "cardano",
     "DOGE-USD": "dogecoin",    "AVAX-USD": "avalanche-2", "MATIC-USD": "matic-network",
     "DOT-USD": "polkadot",     "LINK-USD": "chainlink",   "LTC-USD": "litecoin",
-    # aliases sans "-USD"
     "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
     "BNB": "binancecoin", "XRP": "ripple", "ADA": "cardano",
     "DOGE": "dogecoin", "AVAX": "avalanche-2",
@@ -29,10 +26,21 @@ PERIOD_TO_DAYS = {
     "1y": 365, "2y": 730, "5y": 1825, "max": 1825,
 }
 
-CG_HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json",
-}
+CG_HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json"}
+
+# Session curl_cffi réutilisée (imite Chrome, gère les cookies Yahoo)
+_yf_session = None
+
+def _get_yf_session():
+    global _yf_session
+    if _yf_session is None:
+        try:
+            from curl_cffi import requests as cffi_requests
+            _yf_session = cffi_requests.Session(impersonate="chrome")
+            print("[fetcher] curl_cffi session ready")
+        except ImportError:
+            print("[fetcher] curl_cffi not installed, using default yfinance session")
+    return _yf_session
 
 
 def _is_crypto(symbol: str) -> bool:
@@ -49,7 +57,7 @@ def _cg_get(url: str, timeout: int = 8):
         return None
 
 
-# ─── PRIX ACTUEL ────────────────────────────────────────────
+# ─── PRIX ACTUEL ───────────────────────────────────────────
 
 def get_price(symbol: str) -> float | None:
     key = f"price:{symbol}"
@@ -60,19 +68,17 @@ def get_price(symbol: str) -> float | None:
     price = None
 
     if _is_crypto(symbol):
-        # — CoinGecko pour les cryptos
         cg_id = COINGECKO_IDS[symbol.upper()]
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd"
         data = _cg_get(url)
         if data and cg_id in data:
             price = data[cg_id]["usd"]
     else:
-        # — yfinance pour les actions / indices
         try:
             import yfinance as yf
-            t = yf.Ticker(symbol)
-            info = t.fast_info
-            price = info["lastPrice"]
+            sess = _get_yf_session()
+            t = yf.Ticker(symbol, session=sess) if sess else yf.Ticker(symbol)
+            price = t.fast_info["lastPrice"]
         except Exception as e:
             print(f"[fetcher] yfinance price error for {symbol}: {e}")
 
@@ -81,7 +87,7 @@ def get_price(symbol: str) -> float | None:
     return float(price) if price is not None else None
 
 
-# ─── SÉRIE HISTORIQUE ─────────────────────────────────────────
+# ─── SÉRIE HISTORIQUE ────────────────────────────────────────
 
 def get_series(symbol: str, period: str = "1y") -> list[dict]:
     key = f"series:{symbol}:{period}"
@@ -93,7 +99,6 @@ def get_series(symbol: str, period: str = "1y") -> list[dict]:
     data = None
 
     if _is_crypto(symbol):
-        # — CoinGecko market_chart
         cg_id = COINGECKO_IDS[symbol.upper()]
         url = (
             f"https://api.coingecko.com/api/v3/coins/{cg_id}/market_chart"
@@ -109,10 +114,10 @@ def get_series(symbol: str, period: str = "1y") -> list[dict]:
                 for p in raw["prices"]
             ]
     else:
-        # — yfinance download() pour les actions / indices
         try:
             import yfinance as yf
             import pandas as pd
+            sess = _get_yf_session()
             end = datetime.now()
             start = end - timedelta(days=days)
             df = yf.download(
@@ -123,6 +128,7 @@ def get_series(symbol: str, period: str = "1y") -> list[dict]:
                 progress=False,
                 auto_adjust=True,
                 threads=False,
+                session=sess,
             )
             if df is not None and not df.empty:
                 if isinstance(df.columns, pd.MultiIndex):
@@ -137,7 +143,7 @@ def get_series(symbol: str, period: str = "1y") -> list[dict]:
         except Exception as e:
             print(f"[fetcher] yfinance history error for {symbol}: {e}")
 
-    # — Fallback synthétique
+    # Fallback synthétique
     if not data:
         price = get_price(symbol)
         if price:
