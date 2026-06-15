@@ -2,14 +2,19 @@
 import json, os
 from pathlib import Path
 
-DATA_FILE = Path(os.getenv("TRANSACTIONS_FILE", "data/transactions.json"))
+# Chemin absolu : toujours relatif à la racine du projet, peu importe d'où uvicorn est lancé
+_PROJECT_ROOT = Path(__file__).parent.parent
+DATA_FILE = Path(os.getenv("TRANSACTIONS_FILE", str(_PROJECT_ROOT / "data" / "transactions.json")))
 
 
 def load_transactions() -> list[dict]:
     if not DATA_FILE.exists():
+        print(f"[portfolio] WARN: {DATA_FILE} not found, using demo data")
         return _demo_transactions()
     with open(DATA_FILE) as f:
-        return json.load(f)
+        data = json.load(f)
+    print(f"[portfolio] Loaded {len(data)} transactions from {DATA_FILE}")
+    return data
 
 
 def _demo_transactions() -> list[dict]:
