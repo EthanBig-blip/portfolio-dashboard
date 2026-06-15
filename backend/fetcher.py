@@ -1,9 +1,8 @@
 """
-Unified market data fetcher — no yfinance dependency for live/history data.
-Sources (in order of priority):
-  1. CoinGecko (crypto) — free, no key
-  2. Direct Yahoo Finance v8 JSON (actions/indices) — raw HTTP, no yfinance
-  3. Synthetic flat series from last known price (last resort)
+Unified market data fetcher.
+  - Crypto  → CoinGecko (gratuit, sans clé)
+  - Actions / Indices → yfinance (fast_info pour le prix, download() pour l'historique)
+  - Fallback synthétique si tout échoue
 """
 import json
 import urllib.request
@@ -13,13 +12,16 @@ from . import cache
 
 CACHE_TTL = 300
 
-# CoinGecko IDs for common crypto tickers
+# Mapping ticker → CoinGecko ID
 COINGECKO_IDS = {
-    "BTC-USD": "bitcoin", "ETH-USD": "ethereum", "SOL-USD": "solana",
-    "BNB-USD": "binancecoin", "XRP-USD": "ripple", "ADA-USD": "cardano",
-    "DOGE-USD": "dogecoin", "AVAX-USD": "avalanche-2", "MATIC-USD": "matic-network",
-    "DOT-USD": "polkadot", "LINK-USD": "chainlink", "LTC-USD": "litecoin",
+    "BTC-USD": "bitcoin",      "ETH-USD": "ethereum",     "SOL-USD": "solana",
+    "BNB-USD": "binancecoin",  "XRP-USD": "ripple",       "ADA-USD": "cardano",
+    "DOGE-USD": "dogecoin",    "AVAX-USD": "avalanche-2", "MATIC-USD": "matic-network",
+    "DOT-USD": "polkadot",     "LINK-USD": "chainlink",   "LTC-USD": "litecoin",
+    # aliases sans "-USD"
     "BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana",
+    "BNB": "binancecoin", "XRP": "ripple", "ADA": "cardano",
+    "DOGE": "dogecoin", "AVAX": "avalanche-2",
 }
 
 PERIOD_TO_DAYS = {
@@ -27,23 +29,27 @@ PERIOD_TO_DAYS = {
     "1y": 365, "2y": 730, "5y": 1825, "max": 1825,
 }
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+CG_HEADERS = {
+    "User-Agent": "Mozilla/5.0",
     "Accept": "application/json",
 }
 
 
-def _get(url: str, timeout: int = 8) -> dict | list | None:
+def _is_crypto(symbol: str) -> bool:
+    return symbol.upper() in COINGECKO_IDS
+
+
+def _cg_get(url: str, timeout: int = 8):
     try:
-        req = urllib.request.Request(url, headers=HEADERS)
+        req = urllib.request.Request(url, headers=CG_HEADERS)
         with urllib.request.urlopen(req, timeout=timeout) as r:
             return json.loads(r.read().decode())
     except Exception as e:
-        print(f"[fetcher] HTTP error {url[:60]}: {e}")
+        print(f"[fetcher] CoinGecko error: {e}")
         return None
 
 
-# ─── PRIX ACTUEL ────────────────────────────────────────────────
+# ─── PRIX ACTUEL ────────────────────────────────────────────
 
 def get_price(symbol: str) -> float | None:
     key = f"price:{symbol}"
@@ -53,30 +59,29 @@ def get_price(symbol: str) -> float | None:
 
     price = None
 
-    # 1. CoinGecko pour les cryptos
-    cg_id = COINGECKO_IDS.get(symbol.upper())
-    if cg_id:
+    if _is_crypto(symbol):
+        # — CoinGecko pour les cryptos
+        cg_id = COINGECKO_IDS[symbol.upper()]
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd"
-        data = _get(url)
+        data = _cg_get(url)
         if data and cg_id in data:
             price = data[cg_id]["usd"]
-
-    # 2. Yahoo Finance v8 direct HTTP
-    if price is None:
-        ticker = symbol.replace("-USD", "-USD")  # keep as-is
-        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(ticker)}?interval=1d&range=1d"
-        data = _get(url)
+    else:
+        # — yfinance pour les actions / indices
         try:
-            price = data["chart"]["result"][0]["meta"]["regularMarketPrice"]
-        except Exception:
-            pass
+            import yfinance as yf
+            t = yf.Ticker(symbol)
+            info = t.fast_info
+            price = info["lastPrice"]
+        except Exception as e:
+            print(f"[fetcher] yfinance price error for {symbol}: {e}")
 
     if price is not None:
         cache.set(key, float(price))
     return float(price) if price is not None else None
 
 
-# ─── SÉRIE HISTORIQUE ────────────────────────────────────────────
+# ─── SÉRIE HISTORIQUE ─────────────────────────────────────────
 
 def get_series(symbol: str, period: str = "1y") -> list[dict]:
     key = f"series:{symbol}:{period}"
@@ -87,11 +92,14 @@ def get_series(symbol: str, period: str = "1y") -> list[dict]:
     days = PERIOD_TO_DAYS.get(period, 365)
     data = None
 
-    # 1. CoinGecko market_chart pour les cryptos
-    cg_id = COINGECKO_IDS.get(symbol.upper())
-    if cg_id:
-        url = f"https://api.coingecko.com/api/v3/coins/{cg_id}/market_chart?vs_currency=usd&days={days}&interval=daily"
-        raw = _get(url)
+    if _is_crypto(symbol):
+        # — CoinGecko market_chart
+        cg_id = COINGECKO_IDS[symbol.upper()]
+        url = (
+            f"https://api.coingecko.com/api/v3/coins/{cg_id}/market_chart"
+            f"?vs_currency=usd&days={days}&interval=daily"
+        )
+        raw = _cg_get(url)
         if raw and "prices" in raw and raw["prices"]:
             data = [
                 {
@@ -100,38 +108,44 @@ def get_series(symbol: str, period: str = "1y") -> list[dict]:
                 }
                 for p in raw["prices"]
             ]
-
-    # 2. Yahoo Finance v8 direct HTTP
-    if not data:
-        end = int(datetime.now().timestamp())
-        start = int((datetime.now() - timedelta(days=days)).timestamp())
-        url = (
-            f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}"
-            f"?interval=1d&period1={start}&period2={end}"
-        )
-        raw = _get(url)
+    else:
+        # — yfinance download() pour les actions / indices
         try:
-            result = raw["chart"]["result"][0]
-            timestamps = result["timestamp"]
-            closes = result["indicators"]["quote"][0]["close"]
-            data = [
-                {
-                    "date": str(datetime.utcfromtimestamp(ts).date()),
-                    "close": round(float(c), 4)
-                }
-                for ts, c in zip(timestamps, closes) if c is not None
-            ]
-        except Exception:
-            pass
+            import yfinance as yf
+            import pandas as pd
+            end = datetime.now()
+            start = end - timedelta(days=days)
+            df = yf.download(
+                symbol,
+                start=start.strftime("%Y-%m-%d"),
+                end=end.strftime("%Y-%m-%d"),
+                interval="1d",
+                progress=False,
+                auto_adjust=True,
+                threads=False,
+            )
+            if df is not None and not df.empty:
+                if isinstance(df.columns, pd.MultiIndex):
+                    df.columns = df.columns.get_level_values(0)
+                col = next((c for c in df.columns if str(c).lower() == "close"), None)
+                if col:
+                    df = df[[col]].dropna()
+                    data = [
+                        {"date": str(ts.date()), "close": round(float(v), 4)}
+                        for ts, v in df[col].items()
+                    ]
+        except Exception as e:
+            print(f"[fetcher] yfinance history error for {symbol}: {e}")
 
-    # 3. Fallback synthétique depuis prix actuel
+    # — Fallback synthétique
     if not data:
         price = get_price(symbol)
         if price:
             today = date.today()
+            step = max(1, days // 200)
             data = [
                 {"date": str(today - timedelta(days=days - i)), "close": round(price, 4)}
-                for i in range(0, days + 1, max(1, days // 200))
+                for i in range(0, days + 1, step)
             ]
             print(f"[fetcher] Synthetic fallback for {symbol}")
 
