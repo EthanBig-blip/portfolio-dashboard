@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Portfolio Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300..700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <style>
+    :root,[data-theme="light"]{
+      --bg:#f7f6f2;--surface:#f9f8f5;--surface2:#fbfbf9;--offset:#edeae5;
+      --border:#d4d1ca;--divider:#dcd9d5;--text:#28251d;--muted:#7a7974;
+      --faint:#bab9b4;--primary:#01696f;--success:#437a22;--error:#a13544;
+      --shadow-sm:0 1px 2px rgba(40,37,29,.06);--shadow-md:0 4px 14px rgba(40,37,29,.1);
+      --r-lg:.75rem;--r-xl:1rem;--r-full:9999px;
+      --font:'Inter','Helvetica Neue',sans-serif;--ease:180ms cubic-bezier(.16,1,.3,1);
+    }
+    [data-theme="dark"]{
+      --bg:#171614;--surface:#1c1b19;--surface2:#201f1d;--offset:#22211f;
+      --border:#393836;--divider:#262523;--text:#cdccca;--muted:#797876;
+      --faint:#5a5957;--primary:#4f98a3;--success:#6daa45;--error:#dd6974;
+      --shadow-sm:0 1px 2px rgba(0,0,0,.3);--shadow-md:0 4px 14px rgba(0,0,0,.4);
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-font-smoothing:antialiased}
+    body{min-height:100dvh;font-family:var(--font);color:var(--text);background:var(--bg);transition:background var(--ease),color var(--ease)}
+
+    header{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
+    .logo{display:flex;align-items:center;gap:.6rem}
+    .logo-name{font-size:.9rem;font-weight:700;letter-spacing:-.02em}
+    .header-right{display:flex;align-items:center;gap:.5rem}
+    .period-tabs{display:flex;gap:2px;background:var(--offset);border-radius:var(--r-full);padding:3px}
+    .period-btn{padding:4px 11px;font-size:.72rem;font-weight:500;color:var(--muted);background:none;border:none;border-radius:var(--r-full);cursor:pointer;transition:background var(--ease),color var(--ease)}
+    .period-btn.active,.period-btn:hover{background:var(--primary);color:#fff}
+    .icon-btn{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:var(--r-full);background:var(--offset);border:none;cursor:pointer;color:var(--muted);transition:background var(--ease)}
+    .icon-btn:hover{background:var(--border);color:var(--text)}
+    .status-dot{width:7px;height:7px;border-radius:50%;background:#6daa45;flex-shrink:0}
+    .status-dot.loading{background:var(--muted);animation:pulse 1.2s infinite}
+    .status-dot.error{background:var(--error)}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+
+    main{max-width:1300px;margin:0 auto;padding:2rem 1.5rem;display:flex;flex-direction:column;gap:1.75rem}
+    .section-label{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.6rem}
+
+    .kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(165px,100%),1fr));gap:.85rem}
+    .kpi-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1.1rem 1.25rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:.35rem;transition:box-shadow var(--ease),transform var(--ease)}
+    .kpi-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+    .kpi-label{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+    .kpi-value{font-size:1.55rem;font-weight:700;letter-spacing:-.03em;line-height:1.1;font-variant-numeric:tabular-nums}
+    .kpi-sub{display:flex;align-items:center;gap:.3rem;flex-wrap:wrap;margin-top:.05rem}
+    .badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:var(--r-full);font-size:.7rem;font-weight:600;white-space:nowrap}
+    .up{background:color-mix(in oklab,var(--success) 15%,transparent);color:var(--success)}
+    .dn{background:color-mix(in oklab,var(--error) 15%,transparent);color:var(--error)}
+    .nt{background:color-mix(in oklab,var(--muted) 12%,transparent);color:var(--muted)}
+
+    .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-xl);padding:1.5rem;box-shadow:var(--shadow-sm)}
+    .chart-header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;flex-wrap:wrap}
+    .chart-title{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:.15rem}
+    .chart-headline{font-size:1.3rem;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+    .chart-change{font-size:.8rem;color:var(--muted);margin-top:2px}
+    .canvas-h{position:relative;height:300px}
+    .canvas-h-sm{position:relative;height:230px}
+
+    .bench-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(210px,100%),1fr));gap:.85rem}
+    .bench-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:1rem 1.15rem;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:.45rem;transition:box-shadow var(--ease),transform var(--ease)}
+    .bench-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+    .bench-header{display:flex;align-items:center;justify-content:space-between}
+    .bench-left{display:flex;align-items:center;gap:.5rem}
+    .bench-icon{font-size:1.1rem;width:30px;height:30px;display:flex;align-items:center;justify-content:center}
+    .bench-name{font-size:.82rem;font-weight:600}
+    .bench-symbol{font-size:.68rem;color:var(--muted)}
+    .bench-value{font-size:1.2rem;font-weight:700;font-variant-numeric:tabular-nums}
+    .bench-row{display:flex;align-items:center;justify-content:space-between}
+    .bench-meta{font-size:.7rem;color:var(--muted)}
+    .bar-wrap{height:3px;background:var(--offset);border-radius:var(--r-full);overflow:hidden}
+    .bar-fill{height:100%;border-radius:var(--r-full);transition:width .5s ease}
+
+    .two-col{display:grid;grid-template-columns:2fr 1fr;gap:1.5rem}
+
+    .perf-table{width:100%;border-collapse:collapse;font-size:.82rem}
+    .perf-table th{text-align:left;padding:.45rem .9rem;font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--divider)}
+    .perf-table th:not(:first-child),.perf-table td:not(:first-child){text-align:right}
+    .perf-table td{padding:.6rem .9rem;border-bottom:1px solid var(--divider);font-variant-numeric:tabular-nums}
+    .perf-table tr:last-child td{border-bottom:none}
+    .perf-table tr:hover td{background:var(--offset)}
+    .up-t{color:var(--success);font-weight:600}
+    .dn-t{color:var(--error);font-weight:600}
+    .nt-t{color:var(--muted)}
+
+    .legend{display:flex;flex-wrap:wrap;gap:.4rem .6rem;margin-top:.75rem}
+    .legend-item{display:flex;align-items:center;gap:.3rem;font-size:.74rem;color:var(--muted);cursor:pointer;padding:3px 8px;border-radius:var(--r-full);transition:background var(--ease),opacity var(--ease)}
+    .legend-item:hover{background:var(--offset)}
+    .legend-item.hidden{opacity:.35}
+    .ldot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+
+    .skeleton{background:linear-gradient(90deg,var(--offset) 25%,var(--border) 50%,var(--offset) 75%);background-size:200% 100%;animation:shimmer 1.5s infinite;border-radius:4px;height:1em}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+    .error-banner{background:color-mix(in oklab,var(--error) 12%,transparent);border:1px solid color-mix(in oklab,var(--error) 30%,transparent);color:var(--error);border-radius:var(--r-lg);padding:.75rem 1rem;font-size:.82rem;display:none}
+    .error-banner.show{display:block}
+
+    @media(max-width:900px){.two-col{grid-template-columns:1fr}.period-tabs{display:none}}
+    @media(max-width:580px){main{padding:1rem .75rem}}
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="7" fill="var(--primary)"/>
+      <path d="M7 20 L12 13 L16 17 L21 8" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <circle cx="21" cy="8" r="2" fill="white"/>
+    </svg>
+    <span class="logo-name">Portfolio</span>
+    <div class="status-dot loading" id="statusDot" title="Chargement…"></div>
+  </div>
+  <div class="header-right">
+    <div class="period-tabs" id="periodTabs">
+      <button class="period-btn" data-period="1D">1J</button>
+      <button class="period-btn" data-period="WTD">SEM</button>
+      <button class="period-btn" data-period="MTD">MOI</button>
+      <button class="period-btn active" data-period="YTD">YTD</button>
+      <button class="period-btn" data-period="1Y">1A</button>
+      <button class="period-btn" data-period="MAX">MAX</button>
+    </div>
+    <button class="icon-btn" id="refreshBtn" title="Rafraîchir">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    </button>
+    <button class="icon-btn" id="themeBtn" title="Thème">
+      <svg id="themeIcon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div>
+    <div class="section-label">Vue d’ensemble</div>
+    <div class="kpi-grid" id="kpiGrid">
+      <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
+      <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
+      <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
+      <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
+      <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
+      <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Valeur du portefeuille</div>
+        <div class="chart-headline" id="chartHeadline">Chargement…</div>
+        <div class="chart-change" id="chartChange">—</div>
+      </div>
+    </div>
+    <div class="canvas-h"><canvas id="mainChart"></canvas></div>
+  </div>
+
+  <div>
+    <div class="section-label">Benchmarks marché — données live via Yahoo Finance</div>
+    <div class="bench-grid" id="benchGrid">
+      <div class="bench-card"><div class="skeleton" style="height:80px"></div></div>
+      <div class="bench-card"><div class="skeleton" style="height:80px"></div></div>
+      <div class="bench-card"><div class="skeleton" style="height:80px"></div></div>
+      <div class="bench-card"><div class="skeleton" style="height:80px"></div></div>
+      <div class="bench-card"><div class="skeleton" style="height:80px"></div></div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-header">
+      <div>
+        <div class="chart-title">Performance relative comparée</div>
+        <div class="chart-headline">Portefeuille vs Indices (base 100)</div>
+        <div class="chart-change">Rendement normalisé à 100 au début de la période</div>
+      </div>
+    </div>
+    <div class="canvas-h"><canvas id="compareChart"></canvas></div>
+    <div class="legend" id="compareLegend"></div>
+  </div>
+
+  <div class="two-col">
+    <div class="chart-card">
+      <div class="chart-header"><div><div class="chart-title">Performance par période</div></div></div>
+      <table class="perf-table">
+        <thead><tr><th>Période</th><th>Valeur</th><th>+/−</th><th>%</th></tr></thead>
+        <tbody id="perfBody"><tr><td colspan="4" style="text-align:center;padding:1.5rem;color:var(--muted)">Chargement…</td></tr></tbody>
+      </table>
+    </div>
+    <div class="chart-card">
+      <div class="chart-header"><div>
+        <div class="chart-title">Perf. vs capital investi</div>
+        <div class="chart-headline" id="relHeadline">—</div>
+      </div></div>
+      <div class="canvas-h-sm"><canvas id="relChart"></canvas></div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API='';
+async function apiFetch(path){const r=await fetch(API+path);if(!r.ok)throw new Error('API '+path+' → '+r.status);return r.json();}
+const PERIOD_MAP={'1D':'5d','WTD':'1mo','MTD':'3mo','YTD':'1y','1Y':'1y','MAX':'2y'};
+const UNIT_MAP={'1D':'day','WTD':'day','MTD':'week','YTD':'month','1Y':'month','MAX':'month'};
+const fmtUsd=(v,d=2)=>new Intl.NumberFormat('fr-FR',{style:'currency',currency:'USD',minimumFractionDigits:d,maximumFractionDigits:d}).format(v);
+const fmtPct=v=>(v>=0?'+':'')+(v*100).toFixed(2)+'%';
+const clsCss=v=>v>=0?'up':'dn';
+const clsTxt=v=>v>=0?'up-t':'dn-t';
+const isDark=()=>document.documentElement.getAttribute('data-theme')==='dark';
+const gridClr=()=>isDark()?'rgba(255,255,255,0.05)':'rgba(0,0,0,0.05)';
+const tickClr=()=>isDark()?'#797876':'#7a7974';
+const tipOpts=()=>({backgroundColor:isDark()?'#201f1d':'#fbfbf9',borderColor:isDark()?'#393836':'#d4d1ca',borderWidth:1,titleColor:isDark()?'#797876':'#7a7974',bodyColor:isDark()?'#cdccca':'#28251d',padding:10});
+const dot=document.getElementById('statusDot');
+function setStatus(s){dot.className='status-dot '+s;}
+const charts={};
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+let portfolioData=null,benchmarksData=[],currentPeriod='YTD';
+
+async function fetchAll(period){
+  setStatus('loading');showError(null);
+  const yp=PERIOD_MAP[period]||'1y';
+  try{
+    const[portRes,benchRes]=await Promise.all([apiFetch('/api/portfolio/history?period='+yp),apiFetch('/api/benchmarks?period='+yp)]);
+    portfolioData=portRes;benchmarksData=benchRes.benchmarks||[];setStatus('ok');
+  }catch(e){setStatus('error');showError('Impossible de joindre le backend : '+e.message);return false;}
+  return true;
+}
+function showError(msg){const b=document.getElementById('errorBanner');if(!msg){b.classList.remove('show');return;}b.textContent='⚠ '+msg;b.classList.add('show');}
+
+function renderKPIs(){
+  if(!portfolioData)return;
+  const p=portfolioData.performance||{},last=p.current_value||0;
+  const inv=(portfolioData.invested||[]).slice(-1)[0]?.value||0;
+  function card(label,val,badge,bcls,sub=''){return '<div class="kpi-card"><span class="kpi-label">'+label+'</span><span class="kpi-value">'+val+'</span><div class="kpi-sub">'+(badge?'<span class="badge '+bcls+'">'+badge+'</span>':'')+(sub?'<span style="color:var(--muted);font-size:.68rem">'+sub+'</span>':'')+'</div></div>';}
+  function pcard(label,pf){if(!pf)return card(label,'&mdash;','&mdash;','nt');const cls=clsCss(pf.pct),tcls=clsTxt(pf.pct);return '<div class="kpi-card"><span class="kpi-label">'+label+'</span><span class="kpi-value '+tcls+'">'+fmtPct(pf.pct)+'</span><div class="kpi-sub"><span class="badge '+cls+'">'+(pf.abs>=0?'+':'')+fmtUsd(pf.abs)+'</span></div></div>';}
+  const t=p.today||{pct:0,abs:0};
+  document.getElementById('kpiGrid').innerHTML=[card('Valeur totale',fmtUsd(last),fmtPct(t.pct),clsCss(t.pct),"aujourd'hui"),pcard('Performance YTD',p.ytd),pcard('Performance 1 an',p.one_year),pcard('Performance Max',p.max),card('Capital investi',fmtUsd(inv),'','nt','cumul dépôts'),pcard('Période sélectionnée',p.ytd)].join('');
+}
+
+function renderMainChart(){
+  if(!portfolioData?.series?.length)return;
+  const series=portfolioData.series.map(d=>({x:new Date(d.date),y:d.value}));
+  const invested=(portfolioData.invested||[]).map(d=>({x:new Date(d.date),y:d.value}));
+  const last=series[series.length-1].y,first=series[0].y;
+  const pct=first?(last-first)/first:0,abs=last-first,isUp=pct>=0;
+  const hex=isUp?(isDark()?'#6daa45':'#437a22'):(isDark()?'#dd6974':'#a13544');
+  document.getElementById('chartHeadline').textContent=fmtUsd(last);
+  const chg=document.getElementById('chartChange');
+  chg.textContent=(abs>=0?'+':'')+fmtUsd(abs)+' ('+fmtPct(pct)+') sur la période';
+  chg.style.color=isUp?'var(--success)':'var(--error)';
+  const unit=UNIT_MAP[currentPeriod]||'month';
+  destroyChart('main');
+  const ctx=document.getElementById('mainChart').getContext('2d');
+  charts.main=new Chart(ctx,{type:'line',data:{datasets:[{label:'Portefeuille',data:series,borderColor:hex,borderWidth:2.2,pointRadius:0,pointHoverRadius:5,tension:.3,fill:true,backgroundColor(c2){const{chartArea}=c2.chart;if(!chartArea)return 'transparent';const g=c2.chart.ctx.createLinearGradient(0,chartArea.top,0,chartArea.bottom);g.addColorStop(0,hex+'40');g.addColorStop(1,hex+'00');return g;}},{label:'Capital investi',data:invested,borderColor:isDark()?'#393836':'#d4d1ca',borderWidth:1.5,borderDash:[5,4],pointRadius:0,tension:.2,fill:false}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{...tipOpts(),callbacks:{label:c2=>' '+c2.dataset.label+': '+fmtUsd(c2.parsed.y)}}},scales:{x:{type:'time',time:{unit},grid:{color:gridClr()},ticks:{color:tickClr(),font:{size:11},maxTicksLimit:8},border:{display:false}},y:{position:'right',grid:{color:gridClr()},ticks:{color:tickClr(),font:{size:11},callback:v=>fmtUsd(v,0)},border:{display:false}}}}});
+}
+
+function renderBenchCards(){
+  if(!benchmarksData.length)return;
+  const COND={bull:'🔼 Haussier',bear:'🔽 Baissier',neutral:'● Neutre'};
+  document.getElementById('benchGrid').innerHTML=benchmarksData.map(b=>{
+    const pct=b.change_pct||0,isUp=pct>=0;
+    const barPct=Math.min(100,Math.abs(pct)*100/0.5*100);
+    const dispVal=b.id==='livreta'?((b.rate*100).toFixed(1)+'%/an'):fmtPct(pct);
+    return '<div class="bench-card"><div class="bench-header"><div class="bench-left"><div class="bench-icon">'+(b.icon||'📊')+'</div><div><div class="bench-name">'+b.name+'</div><div class="bench-symbol">'+b.symbol+'</div></div></div><span class="badge '+(isUp?'up':'dn')+'">'+fmtPct(pct)+'</span></div><div class="bench-row"><span class="bench-value" style="color:'+(isUp?'var(--success)':'var(--error)')+'">'+dispVal+'</span><span class="bench-meta">'+(COND[b.market_condition]||'—')+'</span></div><div class="bar-wrap"><div class="bar-fill" style="width:'+barPct+'%;background:'+(isUp?'var(--success)':'var(--error)')+'"></div></div></div>';
+  }).join('');
+}
+
+function renderCompareChart(){
+  if(!portfolioData?.series?.length||!benchmarksData.length)return;
+  const ps=portfolioData.series,pb=ps[0]?.value||1;
+  const portNorm=ps.map(d=>({x:new Date(d.date),y:d.value/pb*100}));
+  const datasets=[{label:'Mon Portefeuille',data:portNorm,borderColor:'#4f98a3',borderWidth:2.5,pointRadius:0,tension:.3,fill:false}];
+  benchmarksData.forEach(b=>{
+    if(!b.series?.length)return;
+    const base=b.series[0].close;
+    datasets.push({label:b.name,data:b.series.map(d=>({x:new Date(d.date),y:d.close/base*100})),borderColor:b.color,borderWidth:b.id==='livreta'?1.5:1.8,borderDash:b.id==='livreta'?[5,3]:[],pointRadius:0,tension:.3,fill:false});
+  });
+  const unit=UNIT_MAP[currentPeriod]||'month';
+  destroyChart('compare');
+  const ctx=document.getElementById('compareChart').getContext('2d');
+  charts.compare=new Chart(ctx,{type:'line',data:{datasets},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{...tipOpts(),callbacks:{label:c2=>{const v=c2.parsed.y-100;return ' '+c2.dataset.label+': '+(v>=0?'+':'')+v.toFixed(2)+'%';}}}},scales:{x:{type:'time',time:{unit},grid:{color:gridClr()},ticks:{color:tickClr(),font:{size:11},maxTicksLimit:8},border:{display:false}},y:{position:'right',grid:{color:gridClr()},ticks:{color:tickClr(),font:{size:11},callback:v=>(v-100>=0?'+':'')+(v-100).toFixed(0)+'%'},border:{display:false}}}}});
+  const allDS=[{label:'Mon Portefeuille',color:'#4f98a3'},...benchmarksData.map(b=>({label:b.name,color:b.color}))];
+  document.getElementById('compareLegend').innerHTML=allDS.map((d,i)=>'<div class="legend-item" data-idx="'+i+'" onclick="toggleDS('+i+')"><div class="ldot" style="background:'+d.color+'"></div><span>'+d.label+'</span></div>').join('');
+}
+window.toggleDS=function(i){if(!charts.compare)return;const m=charts.compare.getDatasetMeta(i);m.hidden=!m.hidden;charts.compare.update();document.querySelectorAll('#compareLegend .legend-item')[i]?.classList.toggle('hidden',m.hidden);};
+
+function renderRelChart(){
+  if(!portfolioData?.series?.length)return;
+  const series=portfolioData.series;
+  const invMap={};
+  (portfolioData.invested||[]).forEach(d=>{invMap[d.date]=d.value;});
+  const relData=series.map(d=>{const inv=invMap[d.date]||0;return{x:new Date(d.date),y:inv>0?((d.value-inv)/inv)*100:0};});
+  const lastRel=relData[relData.length-1]?.y||0;
+  const hex=lastRel>=0?(isDark()?'#6daa45':'#437a22'):(isDark()?'#dd6974':'#a13544');
+  document.getElementById('relHeadline').textContent=(lastRel>=0?'+':'')+lastRel.toFixed(2)+'% vs investi';
+  const unit=UNIT_MAP[currentPeriod]||'month';
+  destroyChart('rel');
+  const ctx=document.getElementById('relChart').getContext('2d');
+  charts.rel=new Chart(ctx,{type:'line',data:{datasets:[{label:'Perf. relative',data:relData,borderColor:hex,borderWidth:2,pointRadius:0,tension:.3,fill:{target:{value:0},above:hex+'28',below:hex+'28'}}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{...tipOpts(),callbacks:{label:c2=>' '+(c2.parsed.y>=0?'+':'')+c2.parsed.y.toFixed(2)+'%'}}},scales:{x:{type:'time',time:{unit},grid:{color:gridClr()},ticks:{color:tickClr(),font:{size:11},maxTicksLimit:5},border:{display:false}},y:{position:'right',grid:{color:gridClr()},ticks:{color:tickClr(),font:{size:11},callback:v=>(v>=0?'+':'')+v.toFixed(1)+'%'},border:{display:false}}}}});
+}
+
+function renderPerfTable(){
+  if(!portfolioData)return;
+  const p=portfolioData.performance||{},last=p.current_value||0;
+  const rows=[{label:"Aujourd'hui",pf:p.today},{label:'Cette semaine',pf:p.wtd},{label:'Ce mois',pf:p.mtd},{label:'YTD',pf:p.ytd},{label:'1 an',pf:p.one_year},{label:'Max',pf:p.max}].map(({label,pf})=>{
+    if(!pf)return '<tr><td><strong>'+label+'</strong></td><td colspan="3" class="nt-t">—</td></tr>';
+    const cls=clsTxt(pf.pct);
+    return '<tr><td><strong>'+label+'</strong></td><td>'+fmtUsd(last)+'</td><td class="'+cls+'">'+(pf.abs>=0?'+':'')+fmtUsd(pf.abs)+'</td><td class="'+cls+'">'+fmtPct(pf.pct)+'</td></tr>';
+  });
+  document.getElementById('perfBody').innerHTML=rows.join('');
+}
+
+function renderAll(){renderKPIs();renderMainChart();renderBenchCards();renderCompareChart();renderRelChart();renderPerfTable();}
+
+async function loadAndRender(period){const ok=await fetchAll(period);if(ok)renderAll();}
+
+document.getElementById('periodTabs').addEventListener('click',e=>{
+  const btn=e.target.closest('.period-btn');if(!btn)return;
+  document.querySelectorAll('.period-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  currentPeriod=btn.dataset.period;loadAndRender(currentPeriod);
+});
+document.getElementById('refreshBtn').addEventListener('click',()=>{
+  fetch('/api/cache/clear',{method:'POST'}).catch(()=>{});
+  loadAndRender(currentPeriod);
+});
+document.getElementById('themeBtn').addEventListener('click',()=>{
+  const dark=isDark();document.documentElement.setAttribute('data-theme',dark?'light':'dark');
+  document.getElementById('themeIcon').innerHTML=dark?'<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>':'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+  renderAll();
+});
+
+loadAndRender('YTD');
+</script>
+</body>
+</html>
