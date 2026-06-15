@@ -29,6 +29,10 @@
     header{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:.7rem 1.5rem;display:flex;align-items:center;justify-content:space-between;gap:1rem}
     .logo{display:flex;align-items:center;gap:.6rem}
     .logo-name{font-size:.9rem;font-weight:700;letter-spacing:-.02em}
+    .nav-links{display:flex;gap:.25rem}
+    .nav-link{padding:5px 12px;border-radius:var(--r-full);font-size:.78rem;font-weight:500;color:var(--muted);text-decoration:none;transition:background var(--ease),color var(--ease)}
+    .nav-link:hover{background:var(--offset);color:var(--text)}
+    .nav-link.active{background:var(--primary);color:#fff}
     .header-right{display:flex;align-items:center;gap:.5rem}
     .period-tabs{display:flex;gap:2px;background:var(--offset);border-radius:var(--r-full);padding:3px}
     .period-btn{padding:4px 11px;font-size:.72rem;font-weight:500;color:var(--muted);background:none;border:none;border-radius:var(--r-full);cursor:pointer;transition:background var(--ease),color var(--ease)}
@@ -101,7 +105,7 @@
     .error-banner.show{display:block}
 
     @media(max-width:900px){.two-col{grid-template-columns:1fr}.period-tabs{display:none}}
-    @media(max-width:580px){main{padding:1rem .75rem}}
+    @media(max-width:580px){main{padding:1rem .75rem}.nav-links{display:none}}
   </style>
 </head>
 <body>
@@ -116,6 +120,12 @@
     <span class="logo-name">Portfolio</span>
     <div class="status-dot loading" id="statusDot" title="Chargement…"></div>
   </div>
+
+  <nav class="nav-links">
+    <a href="/" class="nav-link active">Dashboard</a>
+    <a href="/portefeuille" class="nav-link">Mon portefeuille</a>
+  </nav>
+
   <div class="header-right">
     <div class="period-tabs" id="periodTabs">
       <button class="period-btn" data-period="1D">1J</button>
@@ -138,7 +148,7 @@
   <div class="error-banner" id="errorBanner"></div>
 
   <div>
-    <div class="section-label">Vue d’ensemble</div>
+    <div class="section-label">Vue d'ensemble</div>
     <div class="kpi-grid" id="kpiGrid">
       <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
       <div class="kpi-card"><div class="skeleton" style="width:60%;margin-bottom:.5rem"></div><div class="skeleton" style="width:80%;height:1.5rem"></div></div>
